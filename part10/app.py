@@ -6,21 +6,21 @@ WHAT'S NEW IN PART 10
 You will write two classes without detailed instructions! This is a refactoring, we are not adding new functionality 🙄.
 """
 
-# ToDo 0: You will need to move and change some imports
+# ToDo 0 (adapting imports)
 from typing import List
-import json
-import os
 import time
-import urllib.request
-import urllib.error
 
-from .constants import BANNER, HELP, POETRYDB_URL, CACHE_FILENAME
-from .models import Sonnet, SearchResult, Configuration, LineMatch
+from .constants import BANNER, HELP
+from .models import SearchResult
+from .file_utilities import load_config, load_sonnets
 
+
+# ToDo 0 ii (pass highlight_mode)
 def print_results(
     query: str,
     results: List[SearchResult],
     highlight: bool,
+    highlight_mode: str, # add highlight_mode
     query_time_ms: float | None = None,
 ) -> None:
     total_docs = len(results)
@@ -32,134 +32,17 @@ def print_results(
     print(line)
 
     for idx, r in enumerate(matched, start=1):
-        r.print(idx, highlight, total_docs)
+        r.print(idx, highlight, total_docs, highlight_mode) # add highlight_mode
 
-
-# ---------- Paths & data loading ----------
-# ToDo 0: Move to file_utilities.py
-def module_relative_path(name: str) -> str:
-    """Return absolute path for a file next to this module."""
-    return os.path.join(os.path.dirname(__file__), name)
-
-# ToDo 0: Move to file_utilities.py
-def fetch_sonnets_from_api() -> List[Sonnet]:
-    """
-    Call the PoetryDB API (POETRYDB_URL), decode the JSON response and
-    convert it into a list of dicts.
-
-    - Use only the standard library (urllib.request).
-    - PoetryDB returns a list of poems.
-    - You can add error handling: raise a RuntimeError (or print a helpful message) if something goes wrong.
-    """
-    sonnets = []
-
-    try:
-        with urllib.request.urlopen(POETRYDB_URL, timeout=10) as response:
-            status = getattr(response, "status", None)
-            if status not in (None, 200):
-                raise RuntimeError(f"Request failed with HTTP status {status}")
-
-            try:
-                sonnets = json.load(response)
-            except json.JSONDecodeError as exc:
-                raise RuntimeError(f"Failed to decode JSON: {exc}") from exc
-
-    except (urllib.error.HTTPError,
-            urllib.error.URLError,
-            TimeoutError) as exc:
-        raise RuntimeError(f"Network-related error occurred: {exc}") from exc
-
-    return sonnets
-
-# ToDo 0: Move to file_utilities.py
-def load_sonnets() -> List[Sonnet]:
-    """
-    Load Shakespeare's sonnets with caching.
-
-    Behaviour:
-      1. If 'sonnets.json' already exists:
-           - Print: "Loaded sonnets from cache."
-           - Return the data.
-      2. Otherwise:
-           - Call fetch_sonnets_from_api() to load the data.
-           - Print: "Downloaded sonnets from PoetryDB."
-           - Save the data (pretty-printed) to CACHE_FILENAME.
-           - Return the data.
-    """
-    sonnets_path = module_relative_path(CACHE_FILENAME)
-
-    if os.path.exists(sonnets_path):
-        try:
-            with open(sonnets_path, "r", encoding="utf-8") as f:
-                try:
-                    sonnets = json.load(f)
-                except json.JSONDecodeError as exc:
-                    raise RuntimeError(f"Corrupt cache file (invalid JSON): {exc}") from exc
-        except (OSError, IOError) as exc:
-            raise RuntimeError(f"Failed to read cache file: {exc}") from exc
-
-        print("Loaded sonnets from the cache.")
-    else:
-        sonnets = fetch_sonnets_from_api()
-        try:
-            with open(sonnets_path, "w", encoding="utf-8") as f:
-                try:
-                    json.dump(sonnets, f, indent=2, ensure_ascii=False)
-                except (TypeError, ValueError) as exc:
-                    raise RuntimeError(f"Failed to serialize JSON for cache: {exc}") from exc
-        except (OSError, IOError) as exc:
-            raise RuntimeError(f"Failed to write cache file: {exc}") from exc
-
-        print("Downloaded sonnets from PoetryDB.")
-
-    return [Sonnet(data) for data in sonnets]
-# ------------------------- Config handling ---------------------------------
-# ToDo 0: Move to file_utilities.py
-DEFAULT_CONFIG = Configuration()
-
-# ToDo 0: Move to file_utilities.py
-def load_config() -> Configuration:
-    config_file_path = module_relative_path("config.json")
-
-    cfg = DEFAULT_CONFIG.copy()
-    try:
-        with open(config_file_path) as config_file:
-            cfg.update(json.load(config_file))
-    except FileNotFoundError:
-        # File simply doesn't exist yet → quiet, just use defaults
-        print("No config.json found. Using default configuration.")
-        return cfg
-    except json.JSONDecodeError:
-        # File exists but is not valid JSON
-        print("config.json is invalid. Using default configuration.")
-        return cfg
-    except OSError:
-        # Any other OS / IO problem (permissions, disk issues, etc.)
-        print("Could not read config.json. Using default configuration.")
-        return cfg
-
-    return cfg
-
-# ToDo 0: Move to file_utilities.py
-def save_config(cfg: Configuration) -> None:
-    config_file_path = module_relative_path("config.json")
-
-    try:
-        with open(config_file_path, "w") as config_file:
-            json.dump(cfg.to_dict(), config_file, indent=4)
-    except OSError:
-        print(f"Writing config.json failed.")
 
 # ---------- CLI loop ----------
 
 def main() -> None:
     print(BANNER)
-    # ToDo 0: Depending on how your imports look, you may need to adapt the call to load_config()
     config = load_config()
 
     # Load sonnets (from cache or API)
     start = time.perf_counter()
-    # ToDo 0: Depending on how your imports look, you may need to adapt the call to load_sonnets()
     sonnets = load_sonnets()
 
     elapsed = (time.perf_counter() - start) * 1000
@@ -195,9 +78,8 @@ def main() -> None:
                 if len(parts) == 2 and parts[1].lower() in ("on", "off"):
                     config.highlight = parts[1].lower() == "on"
                     print("Highlighting", "ON" if config.highlight else "OFF")
-                    # ToDo 0: Depending on how your imports look, you may need to adapt the call to save_config()
-                    # ToDo 0: You need to adapt the call to save_config
-                    save_config(config)
+                    # ToDo 0 iii (adapt call)
+                    config.save()
                 else:
                     print("Usage: :highlight on|off")
                 continue
@@ -207,13 +89,22 @@ def main() -> None:
                 if len(parts) == 2 and parts[1].upper() in ("AND", "OR"):
                     config.search_mode = parts[1].upper()
                     print("Search mode set to", config.search_mode)
-                    # ToDo 0: You need to adapt the call to save_config
-                    save_config(config)
+                    # ToDo 0 iii (adapt call)
+                    config.save()
                 else:
                     print("Usage: :search-mode AND|OR")
                 continue
 
-            # ToDo 0: A new setting is added here. It's command string is ':hl-mode'.
+            # ToDo 0 iii (add new highlight_mode)
+            if raw.startswith(":hl-mode"):
+                parts = raw.split()
+                if len(parts) == 2 and parts[1].upper() in ("DEFAULT", "GREEN"):
+                    config.highlight_mode = parts[1].upper()
+                    print("Highlight mode set to", config.highlight_mode)
+                    config.save()
+                else:
+                    print("Usage: :hl-mode DEFAULT|GREEN")
+                continue
 
             print("Unknown command. Type :help for commands.")
             continue
@@ -258,8 +149,8 @@ def main() -> None:
         # Initialize elapsed_ms to contain the number of milliseconds the query evaluation took
         elapsed_ms = (time.perf_counter() - start) * 1000
 
-        # ToDo 0: You will need to pass the new setting, the highlight_mode to print_results and use it there
-        print_results(raw, combined_results, config.highlight, elapsed_ms)
+        # ToDo 0 iii (pass highlight_mode)
+        print_results(raw, combined_results, config.highlight, config.highlight_mode, elapsed_ms) # add highlight_mode
 
 if __name__ == "__main__":
     main()

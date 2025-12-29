@@ -1,49 +1,6 @@
 from __future__ import annotations
 from typing import List, Dict, Any, Tuple
 
-class Configuration:
-    """
-        A small configuration container for user preferences in the IR system.
-        Stores two settings:
-          - highlight: whether matches should be highlighted using ANSI colors.
-          - search_mode: logical mode for combining multiple search terms ("AND" or "OR").
-    """
-    def __init__(self):
-        # Default settings used at program startup.
-        self.highlight = True
-        self.search_mode = "AND"
-
-    def copy(self):
-        """
-            Return a *shallow copy* of this configuration object.
-            Useful when you want to pass config around without mutating the original.
-        """
-        copy = Configuration()
-        copy.highlight = self.highlight
-        copy.search_mode = self.search_mode
-        return copy
-
-    def update(self, other: Dict[str, Any]):
-        """
-            Update this configuration using values from a (loaded) dictionary.
-            Only accepts valid keys and types:
-              - "highlight": must be a boolean
-              - "search_mode": must be "AND" or "OR"
-
-            Invalid entries are silently ignored, ensuring robustness
-            against corrupted or manually edited config files.
-        """
-        if "highlight" in other and isinstance(other["highlight"], bool):
-            self.highlight = other["highlight"]
-
-        if "search_mode" in other and other["search_mode"] in ["AND", "OR"]:
-            self.search_mode = other["search_mode"]
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "highlight": self.highlight,
-            "search_mode": self.search_mode,
-        }
 
 class Sonnet:
     def __init__(self, sonnet_data: Dict[str, Any]):
@@ -100,11 +57,46 @@ class SearchResult:
     def copy(self):
         return SearchResult(self.title, self.title_spans, self.line_matches, self.matches)
 
+    # ToDo 0 i (move and rename function)
+    def combine_with(self, other: "SearchResult") -> "SearchResult":
+        """Combine two search results."""
+
+        combined = self.copy()  # shallow copy # instead of combined = result1.copy()
+
+        combined.matches = self.matches + other.matches  # instead of: combined.matches = result1.matches + result2.matches
+        combined.title_spans = sorted(
+            self.title_spans + other.title_spans
+        )
+
+        # Merge line_matches by line number
+
+        lines_by_no = {lm.line_no: lm.copy() for lm in self.line_matches}
+        for lm in other.line_matches:
+            ln = lm.line_no
+            if ln in lines_by_no:
+                # extend spans & keep original text
+                lines_by_no[ln].spans.extend(lm.spans)
+            else:
+                lines_by_no[ln] = lm.copy()
+
+        combined.line_matches = sorted(
+            lines_by_no.values(), key=lambda lm: lm.line_no
+        )
+
+        return combined
+
+    # ToDo 0 ii (add new highlight_mode)
     @staticmethod
-    def ansi_highlight(text: str, spans):
+    def ansi_highlight(text: str, spans, highlight_mode: str) -> str: # add parameter highlight_mode
         """Return text with ANSI highlight escape codes inserted."""
         if not spans:
             return text
+
+        # add if/else statement to choose color setting
+        if highlight_mode == "GREEN":
+            start_code = "\033[1;92m"  # bold green text
+        else:
+            start_code = "\033[43m\033[30m"  # yellow background, black text
 
         spans = sorted(spans)
         merged = []
@@ -124,52 +116,28 @@ class SearchResult:
         i = 0
         for s, e in merged:
             out.append(text[i:s])
-            # ToDo 0: You will need to use the new setting and for it a different ANSI color code: "\033[1;92m"
-            out.append("\033[43m\033[30m")  # yellow background, black text
+            # ToDo 0 ii (adapt for new highlight_mode)
+            out.append(start_code) # replace variable with start_code
             out.append(text[s:e])
-            # ToDo 0: This stays the same. It just means "continue with default colors"
             out.append("\033[0m")           # reset
             i = e
         out.append(text[i:])
         return "".join(out)
 
-    def print(self, idx, highlight, total_docs):
+    def print(self, idx, highlight, total_docs, highlight_mode: str) -> None: # add parameter highlight_mode
         title_line = (
-            # ToDo 0: You will need to pass the new setting, the highlight_mode to ansi_highlight and use it there
-            self.ansi_highlight(self.title, self.title_spans)
+            # ToDo 0 iii (pass new highlight_mode)
+            self.ansi_highlight(self.title, self.title_spans, highlight_mode) # add highlight_mode
             if highlight
             else self.title
         )
         print(f"\n[{idx}/{total_docs}] {title_line}")
         for lm in self.line_matches:
             line_out = (
-                # ToDo 0: You will need to pass the new setting, the highlight_mode to ansi_highlight and use it there
-                self.ansi_highlight(lm.text, lm.spans)
+                # ToDo 0 iii (pass new highlight_mode)
+                self.ansi_highlight(lm.text, lm.spans, highlight_mode) # add highlight_mode
                 if highlight
                 else lm.text
             )
             print(f"  [{lm.line_no:2}] {line_out}")
-
-    def combine_with(self: SearchResult, other: SearchResult) -> SearchResult:
-        """Combine two search results."""
-
-        combined = self.copy()  # shallow copy
-
-        combined.matches = self.matches + other.matches
-        combined.title_spans = sorted(self.title_spans + other.title_spans)
-
-        # Merge line_matches by line number
-        lines_by_no = {lm.line_no: lm.copy() for lm in self.line_matches}
-        for lm in other.line_matches:
-            ln = lm.line_no
-            if ln in lines_by_no:
-                # extend spans & keep original text
-                lines_by_no[ln].spans.extend(lm.spans)
-            else:
-                lines_by_no[ln] = lm.copy()
-
-        combined.line_matches = sorted(lines_by_no.values(), key=lambda lm: lm.line_no)
-
-        return combined
-
 
