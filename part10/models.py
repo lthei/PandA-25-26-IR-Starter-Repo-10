@@ -172,3 +172,44 @@ class SearchEngine: # class name: represents search mechanism
 
         return combined_results
 
+# ToDo 2 (move setting commands into new class)
+class SettingCommand:
+    def __init__(self, command: str):
+        self.command = command # store the command string (each instance = one command)
+
+    def handle(self, raw: str, config) -> bool: # handle the given raw input, return True if this command handled it, False otherwise
+        if not raw.startswith(self.command): # if the input does not start with this command, this SettingCommand is not responsible.
+            return False
+
+        parts = raw.split()
+
+        if len(parts) != 2: # shared length check for all commands
+            print(f"Usage: {self.command} ...")
+            return True
+
+        value = parts[1] # extract relevant value from input
+
+        if self.command == ":highlight": # original "highlight" command block
+            if value not in ("on", "off"):
+                print("Usage: :highlight on|off")
+                return True
+            config.highlight = value == "on" # convert "on"/"off" to a boolean
+            print("Highlighting", "ON" if config.highlight else "OFF")
+
+        elif self.command == ":search-mode": # original "search mode" command block
+            if value not in ("AND", "OR"):
+                print("Usage: :search-mode AND|OR")
+                return True
+            config.search_mode = value # store search mode
+            print("Search mode set to", config.search_mode)
+
+        elif self.command == ":hl-mode": # original "highlight mode" command block
+            if value not in ("DEFAULT", "GREEN"):
+                print("Usage: :hl-mode DEFAULT|GREEN")
+                return True
+            config.highlight_mode = value # store highlight mode
+            print("Highlight mode set to", config.highlight_mode)
+
+        config.save() # save config
+
+        return True # command was handled

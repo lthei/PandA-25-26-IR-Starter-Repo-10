@@ -11,7 +11,7 @@ from typing import List
 import time
 
 from .constants import BANNER, HELP
-from .models import SearchResult, SearchEngine # import new class SearchEngine
+from .models import SearchResult, SearchEngine, SettingCommand # import new classes SearchEngine and SettingCommand
 from .file_utilities import load_config, load_sonnets
 
 
@@ -50,6 +50,12 @@ def main() -> None:
 
     print(f"Loaded {len(sonnets)} sonnets.")
 
+    # ToDo 2 (use three instances of the new class for the setting commands)
+    setting_commands = [
+        SettingCommand(":highlight"),
+        SettingCommand(":search-mode"),
+        SettingCommand(":hl-mode"),]
+
     while True:
         try:
             raw = input("> ").strip()
@@ -72,42 +78,14 @@ def main() -> None:
 
             # ToDo 2: You realize that the three settings 'highlight', 'search-mode', and 'hl-mode' have a lot
             #  in common. Wrap the common behavior in a class and use this class three times.
-
-            if raw.startswith(":highlight"):
-                parts = raw.split()
-                if len(parts) == 2 and parts[1].lower() in ("on", "off"):
-                    config.highlight = parts[1].lower() == "on"
-                    print("Highlighting", "ON" if config.highlight else "OFF")
-                    # ToDo 0 iii (adapt call)
-                    config.save()
-                else:
-                    print("Usage: :highlight on|off")
-                continue
-
-            if raw.startswith(":search-mode"):
-                parts = raw.split()
-                if len(parts) == 2 and parts[1].upper() in ("AND", "OR"):
-                    config.search_mode = parts[1].upper()
-                    print("Search mode set to", config.search_mode)
-                    # ToDo 0 iii (adapt call)
-                    config.save()
-                else:
-                    print("Usage: :search-mode AND|OR")
-                continue
-
-            # ToDo 0 iii (add new highlight_mode)
-            if raw.startswith(":hl-mode"):
-                parts = raw.split()
-                if len(parts) == 2 and parts[1].upper() in ("DEFAULT", "GREEN"):
-                    config.highlight_mode = parts[1].upper()
-                    print("Highlight mode set to", config.highlight_mode)
-                    config.save()
-                else:
-                    print("Usage: :hl-mode DEFAULT|GREEN")
-                continue
-
-            print("Unknown command. Type :help for commands.")
-            continue
+            # try all setting commands in order (one handles input)
+            handled = False
+            for cmd in setting_commands: # check current SettingCommand instance if it can handle input
+                if cmd.handle(raw, config):
+                    handled = True
+                    break # if command was handled, we stop checking
+            if handled:
+                continue # loop is skipped if setting command was processed
 
         # ---------- Query evaluation ----------
         words = raw.split()
