@@ -141,3 +141,34 @@ class SearchResult:
             )
             print(f"  [{lm.line_no:2}] {line_out}")
 
+# ToDo 2 (extract search behaviour into separate class)
+# put into this module to keep all of the search logic together
+class SearchEngine: # class name: represents search mechanism
+    def __init__(self, sonnets: List[Sonnet]): # initialization with list of sonnets
+        self.sonnets = sonnets
+
+    def search(self, query: str, search_mode: str) -> List[SearchResult]: # pass query and search_mode, return list of search results
+        words = query.split() # split query
+
+        combined_results = []
+
+        for word in words:
+            results = [s.search_for(word) for s in self.sonnets] # dot notation
+
+            if not combined_results:
+                combined_results = results
+            else:
+                for i in range(len(combined_results)):
+                    combined_result = combined_results[i]
+                    result = results[i]
+
+                    if search_mode == "AND": # remove dot notation
+                        if combined_result.matches > 0 and result.matches > 0:
+                            combined_results[i] = combined_result.combine_with(result)
+                        else:
+                            combined_result.matches = 0
+                    elif search_mode == "OR": # remove dot notation
+                        combined_results[i] = combined_result.combine_with(result)
+
+        return combined_results
+

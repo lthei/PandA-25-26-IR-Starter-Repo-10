@@ -11,7 +11,7 @@ from typing import List
 import time
 
 from .constants import BANNER, HELP
-from .models import SearchResult
+from .models import SearchResult, SearchEngine # import new class SearchEngine
 from .file_utilities import load_config, load_sonnets
 
 
@@ -117,36 +117,9 @@ def main() -> None:
         start = time.perf_counter()
 
         # ToDo 1: Extract the search - basically everything until the end of the time measurement in a new class.
-        #  Find a good name for that class. Make this class encapsulate our list of sonnets!
-        words = raw.split()
+        # search logic extracted and moved to models.py
+        combined_results = SearchEngine(sonnets).search(raw, config.search_mode) # use the new class method to get combined_results
 
-        combined_results = []
-
-        for word in words:
-            # Searching for the word in all sonnets
-            results = [s.search_for(word) for s in sonnets]
-
-            if not combined_results:
-                # No results yet. We store the first list of results in combined_results
-                combined_results = results
-            else:
-                # We have an additional result, we have to merge the two results: loop all sonnets
-                for i in range(len(combined_results)):
-                    # Checking each sonnet individually
-                    combined_result = combined_results[i]
-                    result = results[i]
-
-                    if config.search_mode == "AND":
-                        if combined_result.matches > 0 and result.matches > 0:
-                            # Only if we have matches in both results, we consider the sonnet (logical AND!)
-                            combined_results[i] = combined_result.combine_with(result)
-                        else:
-                            # Not in both. No match!
-                            combined_result.matches = 0
-                    elif config.search_mode == "OR":
-                        combined_results[i] = combined_result.combine_with(result)
-
-        # Initialize elapsed_ms to contain the number of milliseconds the query evaluation took
         elapsed_ms = (time.perf_counter() - start) * 1000
 
         # ToDo 0 iii (pass highlight_mode)
