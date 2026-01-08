@@ -51,6 +51,7 @@ def main() -> None:
     print(f"Loaded {len(sonnets)} sonnets.")
 
     # ToDo 2 (use three instances of the new class for the setting commands)
+    # create three instances, one for each setting (replaces original if-blocks)
     setting_commands = [
         SettingCommand(":highlight"),
         SettingCommand(":search-mode"),
@@ -78,14 +79,15 @@ def main() -> None:
 
             # ToDo 2: You realize that the three settings 'highlight', 'search-mode', and 'hl-mode' have a lot
             #  in common. Wrap the common behavior in a class and use this class three times.
-            # try all setting commands in order (one handles input)
+            # this block checks whether the input is a setting command
             handled = False
-            for cmd in setting_commands: # check current SettingCommand instance if it can handle input
+            for cmd in setting_commands: # loop over each command until one matches and handles the input
                 if cmd.handle(raw, config):
                     handled = True
-                    break # if command was handled, we stop checking
+                    break # if command was handled, the rest of the (inner) loop is skipped
             if handled:
-                continue # loop is skipped if setting command was processed
+                continue # if setting command was processed, the input should not be processed as a search query, so we skip the outer loop
+            # if no command matched (handled is still False) , we can run the search logic below
 
         # ---------- Query evaluation ----------
         words = raw.split()

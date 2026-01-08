@@ -141,17 +141,19 @@ class SearchResult:
             )
             print(f"  [{lm.line_no:2}] {line_out}")
 
-# ToDo 2 (extract search behaviour into separate class)
+# ToDo 1 (extract search behaviour into separate class)
 # put into this module to keep all of the search logic together
 class SearchEngine: # class name: represents search mechanism
-    def __init__(self, sonnets: List[Sonnet]): # initialization with list of sonnets
+    def __init__(self, sonnets: List[Sonnet]): # initialization with list of sonnets (needed for every search)
         self.sonnets = sonnets
 
+    # this class has a single method
     def search(self, query: str, search_mode: str) -> List[SearchResult]: # pass query and search_mode, return list of search results
         words = query.split() # split query
 
         combined_results = []
 
+        # same as original code
         for word in words:
             results = [s.search_for(word) for s in self.sonnets] # dot notation
 
@@ -177,8 +179,8 @@ class SettingCommand:
     def __init__(self, command: str):
         self.command = command # store the command string (each instance = one command)
 
-    def handle(self, raw: str, config) -> bool: # handle the given raw input, return True if this command handled it, False otherwise
-        if not raw.startswith(self.command): # if the input does not start with this command, this SettingCommand is not responsible.
+    def handle(self, raw: str, config) -> bool: # handle the given raw input, return True if a command handled it, False otherwise
+        if not raw.startswith(self.command): # filter: if input doesn’t start with this command, method opts out so another SettingCommand instance can be checked
             return False
 
         parts = raw.split()
